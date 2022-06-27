@@ -222,7 +222,7 @@ export const candleFields = [
  * to a user friendly collection.
  */
 const candles = (pubCall, payload, endpoint = '/api/v3/klines') =>
-  checkParams('candles', payload, endpoint.includes('indexPrice') ? ['pair'] : ['symbol']) &&
+  checkParams('candles', payload, (endpoint.includes('indexPrice') || endpoint.includes('continuous')) ? ['pair'] : ['symbol']) &&
   pubCall(endpoint, { interval: '5m', ...payload }).then(candles =>
     candles.map(candle => zip(candleFields, candle)),
   )
