@@ -574,6 +574,7 @@ declare module 'binance-api-node' {
     futuresExchangeInfo(): Promise<ExchangeInfo<FuturesOrderType_LT>>
     futuresBook(options: { symbol: string; limit?: number }): Promise<OrderBook>
     futuresCandles(options: CandlesOptions): Promise<CandleChartResult[]>
+    futuresContinuousCandles(options: ContinuousCandlesOptions): Promise<CandleChartResult[]>
     futuresMarkPriceCandles(options: CandlesOptions): Promise<CandleChartResult[]>
     futuresIndexPriceCandles(options: IndexPriceCandlesOptions): Promise<CandleChartResult[]>
     futuresAggTrades(options?: {
@@ -1874,6 +1875,17 @@ declare module 'binance-api-node' {
     endTime?: number
   }
 
+  export type ContractType_LT = 'PERPETUAL' | 'CURRENT_MONTH' | 'NEXT_MONTH' | 'CURRENT_QUARTER' | 'NEXT_QUARTER'
+  
+  export const enum ContractType {
+    PERPETUAL = 'PERPETUAL',
+    CURRENT_MONTH = 'CURRENT_MONTH',
+    NEXT_MONTH = 'NEXT_MONTH',
+    CURRENT_QUARTER = 'CURRENT_QUARTER',
+    NEXT_QUARTER = 'NEXT_QUARTER',
+  }
+
+  export type ContinuousCandlesOptions = Omit<CandlesOptions, 'symbol'> & { pair: string, contractType: ContractType_LT }
   export type IndexPriceCandlesOptions = Omit<CandlesOptions, 'symbol'> & { pair: string }
 
   export interface CandleChartResult {

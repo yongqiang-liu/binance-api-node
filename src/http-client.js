@@ -427,6 +427,7 @@ export default opts => {
     futuresAllForceOrders: payload => pubCall('/fapi/v1/allForceOrders', payload),
     futuresLongShortRatio: payload => pubCall('/futures/data/globalLongShortAccountRatio', payload),
     futuresCandles: payload => candles(pubCall, payload, '/fapi/v1/klines'),
+    futuresContinuousCandles: payload => candles(pubCall, payload, '/fapi/v1/continuousKlines'),
     futuresMarkPriceCandles: payload => candles(pubCall, payload, '/fapi/v1/markPriceKlines'),
     futuresIndexPriceCandles: payload => candles(pubCall, payload, '/fapi/v1/indexPriceKlines'),
     futuresTrades: payload =>
