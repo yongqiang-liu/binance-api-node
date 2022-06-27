@@ -11,7 +11,7 @@ const endpoints = {
 
 const wsOptions = {}
 function openWebSocket(url) {
-  return _openWebSocket(url, wsOptions)
+  return _openWebSocket(url, wsOptions, {});
 }
 
 const depthTransform = m => ({
@@ -782,8 +782,8 @@ export default opts => {
     endpoints.futures = opts.wsFutures
   }
 
-  if (opts && opts.proxy) {
-    wsOptions.proxy = opts.proxy
+  if (opts && opts.wsOptions) {
+    Object.assign(wsOptions, opts.wsOptions)
   }
 
   return {
