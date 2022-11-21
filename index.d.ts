@@ -207,7 +207,7 @@ declare module 'binance-api-node' {
     url: string
   }
 
-  export interface WithrawResponse {
+  export interface WithdrawResponse {
     id: string
   }
 
@@ -313,8 +313,8 @@ declare module 'binance-api-node' {
       }
 
   export type GetOrderOcoOptions =
-    | { symbol: string; orderListId: number; useServerTime?: boolean }
-    | { symbol: string; listClientOrderId: string; useServerTime?: boolean }
+    | { orderListId: number; useServerTime?: boolean }
+    | { listClientOrderId: string; useServerTime?: boolean }
 
   export type CancelOrderOcoOptions =
     | { symbol: string; orderListId: number; useServerTime?: boolean; newClientOrderId?: string }
@@ -538,7 +538,7 @@ declare module 'binance-api-node' {
       amount: number
       name?: string
       transactionFeeFlag?: boolean
-    }): Promise<WithrawResponse>
+    }): Promise<WithdrawResponse>
     assetDetail(): Promise<AssetDetail>
     getBnbBurn(): Promise<BNBBurn>
     setBnbBurn(opts: SetBNBBurnOptions): Promise<BNBBurn>
@@ -609,7 +609,11 @@ declare module 'binance-api-node' {
       limit?: number
     }): Promise<FundingRateResult[]>
     futuresOrder(options: NewFuturesOrder): Promise<FuturesOrder>
-
+    futuresBatchOrders(options: {
+      batchOrders: NewFuturesOrder[]
+      recvWindow?: number
+      timestamp?: number
+    }): Promise<FuturesOrder[]>
     getMultiAssetsMargin(): Promise<MultiAssetsMargin>
     setMultiAssetsMargin(options: MultiAssetsMargin): Promise<MultiAssetsMargin>
 
@@ -621,6 +625,13 @@ declare module 'binance-api-node' {
     futuresCancelAllOpenOrders(options: {
       symbol: string
     }): Promise<FuturesCancelAllOpenOrdersResult>
+    futuresCancelBatchOrders(options: {
+      symbol: string
+      orderIdList?: string
+      origClientOrderIdList?: string
+      recvWindow?: number
+      timestamp?: number
+    })
     futuresGetOrder(options: {
       symbol: string
       orderId?: number
@@ -632,6 +643,14 @@ declare module 'binance-api-node' {
       symbol?: string
       useServerTime?: boolean
     }): Promise<QueryFuturesOrderResult[]>
+    futuresAllOrders(options: {
+      symbol: string
+      orderId?: number
+      startTime?: number
+      endTime?: number
+      limit?: number
+      recvWindow?: number
+    }): Promise<QueryFuturesOrderResult>
     futuresPositionRisk(options?: {
       symbol?: string
       recvWindow?: number
@@ -744,6 +763,7 @@ declare module 'binance-api-node' {
 
   export type UserDataStreamEvent =
     | OutboundAccountInfo
+    | ListStatus
     | ExecutionReport
     | BalanceUpdate
     | OutboundAccountPosition
@@ -1557,6 +1577,24 @@ declare module 'binance-api-node' {
     eventTime: number
     eventType: 'outboundAccountPosition'
     lastAccountUpdate: number
+  }
+
+  export interface ListStatus {
+    eventType: 'listStatus'
+    eventTime: number
+    symbol: string
+    orderListId: number
+    contingencyType: 'OCO' | string
+    listStatusType: ListStatusType_LT
+    listOrderStatus: ListOrderStatus_LT
+    listRejectReason: 'NONE' | string
+    listClientOrderId: string
+    transactionTime: number
+    orders: Array<{
+        symbol: string
+        orderId: number
+        clientOrderId: string
+    }>
   }
 
   export interface ExecutionReport {
