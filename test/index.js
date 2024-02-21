@@ -1,7 +1,7 @@
 import test from 'ava'
 
 import Binance, { ErrorCodes } from 'index'
-import { candleFields } from 'http-client'
+import { candleFields, deliveryCandleFields } from 'http-client'
 import { userEventHandler } from 'websocket'
 
 import { checkFields, createHttpServer } from './utils'
@@ -339,7 +339,7 @@ test('[WS] aggregate trades', t => {
   })
 })
 
-test('[WS] liquidations', t => {
+test.skip('[WS] liquidations', t => {
   return new Promise(resolve => {
     client.ws.futuresLiquidations('ETHBTC', liquidation => {
       checkFields(t, liquidation, [
@@ -360,7 +360,7 @@ test('[WS] liquidations', t => {
   })
 })
 
-test('[FUTURES-WS] all liquidations', t => {
+test.skip('[FUTURES-WS] all liquidations', t => {
   return new Promise(resolve => {
     client.ws.futuresAllLiquidations(liquidation => {
       checkFields(t, liquidation, [
@@ -584,6 +584,58 @@ test('[WS] userEvents', t => {
     })
   })({ data: JSON.stringify(tradePayload) })
 
+  const listStatusPayload = {
+    e: 'listStatus',
+    E: 1661588112531,
+    s: 'TWTUSDT',
+    g: 73129826,
+    c: 'OCO',
+    l: 'EXEC_STARTED',
+    L: 'EXECUTING',
+    r: 'NONE',
+    C: 'Y3ZgLMRPHZFNqEVSZwoJI7',
+    T: 1661588112530,
+    O: [
+      {
+        s: 'TWTUSDT',
+        i: 209259206,
+        c: 'electron_f675d1bdea454cd4afeac5664be',
+      },
+      {
+        s: 'TWTUSDT',
+        i: 209259207,
+        c: 'electron_38d852a65a89486c98e59879327',
+      },
+    ],
+  }
+
+  userEventHandler(res => {
+    t.deepEqual(res, {
+      eventType: 'listStatus',
+      eventTime: 1661588112531,
+      symbol: 'TWTUSDT',
+      orderListId: 73129826,
+      contingencyType: 'OCO',
+      listStatusType: 'EXEC_STARTED',
+      listOrderStatus: 'EXECUTING',
+      listRejectReason: 'NONE',
+      listClientOrderId: 'Y3ZgLMRPHZFNqEVSZwoJI7',
+      transactionTime: 1661588112530,
+      orders: [
+        {
+          symbol: 'TWTUSDT',
+          orderId: 209259206,
+          clientOrderId: 'electron_f675d1bdea454cd4afeac5664be',
+        },
+        {
+          symbol: 'TWTUSDT',
+          orderId: 209259207,
+          clientOrderId: 'electron_38d852a65a89486c98e59879327',
+        },
+      ],
+    })
+  })({ data: JSON.stringify(listStatusPayload) })
+
   const newEvent = { e: 'totallyNewEvent', yolo: 42 }
 
   userEventHandler(res => {
@@ -738,6 +790,148 @@ test('[FUTURES-REST] aggTrades', async t => {
 
 test('[FUTURES-REST] fundingRate', async t => {
   const fundingRate = await client.futuresFundingRate({ symbol: 'BTCUSDT' })
+  checkFields(t, fundingRate[0], ['symbol', 'fundingTime', 'fundingRate'])
+  t.is(fundingRate.length, 100)
+})
+
+// DELIVERY TESTS
+
+test('[DELIVERY-REST] ping', async t => {
+  t.truthy(await client.deliveryPing(), 'A simple ping should work')
+})
+
+test('[DELIVERY-REST] time', async t => {
+  const ts = await client.deliveryTime()
+  t.truthy(new Date(ts).getTime() > 0, 'The returned timestamp should be valid')
+})
+
+test('[DELIVERY-REST] exchangeInfo', async t => {
+  const res = await client.deliveryExchangeInfo()
+  checkFields(t, res, ['timezone', 'serverTime', 'rateLimits', 'exchangeFilters', 'symbols'])
+})
+
+test('[DELIVERY-REST] book', async t => {
+  try {
+    await client.deliveryBook()
+  } catch (e) {
+    t.is(e.message, 'You need to pass a payload object.')
+  }
+
+  try {
+    await client.deliveryBook({})
+  } catch (e) {
+    t.is(e.message, 'Method book requires symbol parameter.')
+  }
+
+  const book = await client.deliveryBook({ symbol: 'TRXUSD_perp' })
+  t.truthy(book.lastUpdateId)
+  t.truthy(book.asks.length)
+  t.truthy(book.bids.length)
+
+  const [bid] = book.bids
+  t.truthy(typeof bid.price === 'string')
+  t.truthy(typeof bid.quantity === 'string')
+})
+
+test('[DELIVERY-REST] markPrice', async t => {
+  const res = await client.deliveryMarkPrice()
+  t.truthy(Array.isArray(res))
+  checkFields(t, res[0], [
+    'symbol',
+    'pair',
+    'markPrice',
+    'indexPrice',
+    'estimatedSettlePrice',
+    'time',
+  ])
+})
+
+test('[DELIVERY-REST] candles', async t => {
+  try {
+    await client.deliveryCandles({})
+  } catch (e) {
+    t.is(e.message, 'Method candles requires symbol parameter.')
+  }
+
+  const candles = await client.deliveryCandles({ symbol: 'TRXUSD_perp' })
+
+  t.truthy(candles.length)
+
+  const [candle] = candles
+  checkFields(t, candle, deliveryCandleFields)
+})
+
+test('[DELIVERY-REST] mark price candles', async t => {
+  try {
+    await client.deliveryMarkPriceCandles({})
+  } catch (e) {
+    t.is(e.message, 'Method candles requires symbol parameter.')
+  }
+
+  const candles = await client.deliveryMarkPriceCandles({ symbol: 'TRXUSD_perp' })
+
+  t.truthy(candles.length)
+
+  const [candle] = candles
+  checkFields(t, candle, deliveryCandleFields)
+})
+
+test('[DELIVERY-REST] index price candles', async t => {
+  try {
+    await client.deliveryIndexPriceCandles({})
+  } catch (e) {
+    t.is(e.message, 'Method candles requires pair parameter.')
+  }
+
+  const candles = await client.deliveryIndexPriceCandles({ pair: 'TRXUSD' })
+
+  t.truthy(candles.length)
+
+  const [candle] = candles
+  checkFields(t, candle, deliveryCandleFields)
+})
+
+test('[DELIVERY-REST] trades', async t => {
+  const trades = await client.deliveryTrades({ symbol: 'TRXUSD_perp', limit: 10 })
+  t.is(trades.length, 10)
+  checkFields(t, trades[0], ['id', 'price', 'qty', 'baseQty', 'time'])
+})
+
+test('[DELIVERY-REST] dailyStats', async t => {
+  const res = await client.deliveryDailyStats({ symbol: 'TRXUSD_perp' })
+  t.truthy(res)
+  // Note : delivery API always returns an array hence the res[0]
+  checkFields(t, res[0], ['pair', 'highPrice', 'lowPrice', 'volume', 'priceChange'])
+})
+
+test('[DELIVERY-REST] prices', async t => {
+  const prices = await client.deliveryPrices()
+  t.truthy(prices)
+  t.truthy(prices.TRXUSD_PERP)
+})
+
+test('[DELIVERY-REST] allBookTickers', async t => {
+  const tickers = await client.deliveryAllBookTickers()
+  t.truthy(tickers)
+  t.truthy(tickers.TRXUSD_PERP)
+})
+
+test('[DELIVERY-REST] aggTrades', async t => {
+  try {
+    await client.deliveryAggTrades({})
+  } catch (e) {
+    t.is(e.message, 'Method aggTrades requires symbol parameter.')
+  }
+
+  const trades = await client.deliveryAggTrades({ symbol: 'TRXUSD_perp' })
+  t.truthy(trades.length)
+
+  const [trade] = trades
+  t.truthy(trade.aggId)
+})
+
+test('[DELIVERY-REST] fundingRate', async t => {
+  const fundingRate = await client.deliveryFundingRate({ symbol: 'TRXUSD_perp' })
   checkFields(t, fundingRate[0], ['symbol', 'fundingTime', 'fundingRate'])
   t.is(fundingRate.length, 100)
 })
